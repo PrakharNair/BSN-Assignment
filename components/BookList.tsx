@@ -1,9 +1,9 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Container } from '@mui/material';
+import { Container, Button } from '@mui/material';
+import AddBook from './AddBook';
 import { Book, Category, Tag } from '../interfaces/Book';
 
 const columns: GridColDef[] = [
@@ -15,21 +15,29 @@ const columns: GridColDef[] = [
   { field: 'tags', headerName: 'Tags', width: 200 },
 ];
 
-const BookListTable: React.FC = () => {
+const BookList: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       const response = await fetch('/books.json');
       const data = await response.json();
-      setBooks(data.books);
       setCategories(data.categories);
       setTags(data.tags);
+
+      const storedBooks = localStorage.getItem('books');
+      if (storedBooks) {
+        setBooks(JSON.parse(storedBooks));
+      } else {
+        setBooks(data.books);
+      }
     };
     fetchData();
-  }, []); 
+  }, []);
+
 
   const getCategoryNames = (ids: number[]) => {
     return ids.map(id => categories.find(category => category.id === id.toString())?.name).join(', ');
@@ -45,6 +53,20 @@ const BookListTable: React.FC = () => {
     tags: getTagNames(book.tags)
   }));
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleAddBook = (newBook: Book) => {
+    const updatedBooks = [...books, newBook];
+    setBooks([...books, newBook]);
+    localStorage.setItem('books', JSON.stringify(updatedBooks));
+  };
+
   return (
     <Container>
       <div style={{ height: 400, width: '100%' }}>
@@ -59,8 +81,19 @@ const BookListTable: React.FC = () => {
           }}
         />
       </div>
+      <Button variant="contained" color="primary" onClick={handleOpenModal} style={{ marginTop: 20 }}>
+        Add Book
+      </Button>
+      <AddBook
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onAddBook={handleAddBook}
+        categories={categories}
+        tags={tags}
+        nextId={books.length + 1}
+      />
     </Container>
   );
 };
 
-export default BookListTable;
+export default BookList;
