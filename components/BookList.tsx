@@ -9,6 +9,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Book, Category, Tag } from '../interfaces/Book';
 import Actions from './Actions';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const BookList: React.FC = () => {
     const [books, setBooks] = useState<Book[]>([]);
@@ -32,24 +34,28 @@ const BookList: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const storedCategories = localStorage.getItem('categories');
-            const storedTags = localStorage.getItem('tags');
-            const storedBooks = localStorage.getItem('books');
+            try {
+                const storedCategories = localStorage.getItem('categories');
+                const storedTags = localStorage.getItem('tags');
+                const storedBooks = localStorage.getItem('books');
 
-            if (storedCategories && storedTags && storedBooks) {
-                setCategories(JSON.parse(storedCategories));
-                setTags(JSON.parse(storedTags));
-                setBooks(JSON.parse(storedBooks));
-            } else {
-                const response = await fetch('/books.json');
-                const data = await response.json();
-                setCategories(data.categories);
-                setTags(data.tags);
-                setBooks(data.books);
+                if (storedCategories && storedTags && storedBooks) {
+                    setCategories(JSON.parse(storedCategories));
+                    setTags(JSON.parse(storedTags));
+                    setBooks(JSON.parse(storedBooks));
+                } else {
+                    const response = await fetch('/books.json');
+                    const data = await response.json();
+                    setCategories(data.categories);
+                    setTags(data.tags);
+                    setBooks(data.books);
 
-                localStorage.setItem('categories', JSON.stringify(data.categories));
-                localStorage.setItem('tags', JSON.stringify(data.tags));
-                localStorage.setItem('books', JSON.stringify(data.books));
+                    localStorage.setItem('categories', JSON.stringify(data.categories));
+                    localStorage.setItem('tags', JSON.stringify(data.tags));
+                    localStorage.setItem('books', JSON.stringify(data.books));
+                }
+            } catch (error) {
+                toast.error('Failed to fetch data');
             }
         };
         fetchData();
@@ -78,7 +84,6 @@ const BookList: React.FC = () => {
         if (book) {
             setBookToEdit(book);
             setIsEditModalOpen(true);
-            console.log("Editing book:", book);
         }
     };
 
@@ -119,41 +124,62 @@ const BookList: React.FC = () => {
             const updatedBooks = books.filter(book => book.id !== bookToDelete.id);
             setBooks(updatedBooks);
             localStorage.setItem('books', JSON.stringify(updatedBooks));
+            toast.success('Book deleted successfully');
             handleCloseModal();
         }
     };
 
     const handleAddBook = (newBook: Book) => {
-        const updatedBooks = [...books, newBook];
-        setBooks(updatedBooks);
-        localStorage.setItem('books', JSON.stringify(updatedBooks));
+        try {
+            const updatedBooks = [...books, newBook];
+            setBooks(updatedBooks);
+            localStorage.setItem('books', JSON.stringify(updatedBooks));
+            toast.success('Book added successfully');
+        } catch (error) {
+            toast.error('Failed to add book');
+        }
     };
 
     const handleEditBook = (updatedBook: Book) => {
-        const updatedBooks = books.map(book => (book.id === updatedBook.id ? updatedBook : book));
-        setBooks(updatedBooks);
-        localStorage.setItem('books', JSON.stringify(updatedBooks));
-        handleCloseModal();
+        try {
+            const updatedBooks = books.map(book => (book.id === updatedBook.id ? updatedBook : book));
+            setBooks(updatedBooks);
+            localStorage.setItem('books', JSON.stringify(updatedBooks));
+            toast.success('Book edited successfully');
+            handleCloseModal();
+        } catch (error) {
+            toast.error('Failed to edit book');
+        }
     };
 
     const generateUniqueId = (): string => {
         let newId: string;
         do {
-            newId = (Math.floor(10000 + Math.random() * 90000)).toString(); // Generate a random 5-digit string
+            newId = (Math.floor(10000 + Math.random() * 90000)).toString();
         } while (categories.some(category => category.id === newId) || tags.some(tag => tag.id === newId));
         return newId;
     };
 
     const handleDeleteCategory = (categoryId: string) => {
-        const updatedCategories = categories.filter(category => category.id !== categoryId);
-        const updatedBooks = books.map(book => ({
-            ...book,
-            categories: book.categories.filter(id => id.toString() !== categoryId)
-        }));
-        setCategories(updatedCategories);
-        setBooks(updatedBooks);
-        localStorage.setItem('categories', JSON.stringify(updatedCategories));
-        localStorage.setItem('books', JSON.stringify(updatedBooks));
+        const isInUse = books.some(book => book.categories.includes(parseInt(categoryId)));
+        if (isInUse) {
+            toast.error('Cannot delete category as it is in use');
+            return;
+        }
+        try {
+            const updatedCategories = categories.filter(category => category.id !== categoryId);
+            const updatedBooks = books.map(book => ({
+                ...book,
+                categories: book.categories.filter(id => id.toString() !== categoryId)
+            }));
+            setCategories(updatedCategories);
+            setBooks(updatedBooks);
+            localStorage.setItem('categories', JSON.stringify(updatedCategories));
+            localStorage.setItem('books', JSON.stringify(updatedBooks));
+            toast.success('Category deleted successfully');
+        } catch (error) {
+            toast.error('Failed to delete category');
+        }
     };
 
     const handleEditCategory = (category: Category) => {
@@ -161,44 +187,75 @@ const BookList: React.FC = () => {
         setNewCategoryName(category.name);
     };
 
-    
+
     const handleSaveCategory = () => {
         if (categoryToEdit) {
-            const updatedCategories = categories.map(category =>
-                category.id === categoryToEdit.id ? { ...category, name: newCategoryName } : category
-            );
-            setCategories(updatedCategories);
-            localStorage.setItem('categories', JSON.stringify(updatedCategories));
-            setCategoryToEdit(null);
-            setNewCategoryName("");
+            const isDuplicate = categories.some(category => category.name === newCategoryName && category.id !== categoryToEdit.id);
+            if (isDuplicate) {
+                toast.error('Category name already exists');
+                return;
+            }
+            try {
+                const updatedCategories = categories.map(category =>
+                    category.id === categoryToEdit.id ? { ...category, name: newCategoryName } : category
+                );
+                setCategories(updatedCategories);
+                localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                setCategoryToEdit(null);
+                setNewCategoryName("");
+                toast.success('Category edited successfully');
+            } catch (error) {
+                toast.error('Failed to edit category');
+            }
         }
     };
 
+
     const handleAddNewCategory = () => {
         if (newCategoryInput.trim() !== "") {
-            const newId: string = generateUniqueId();
-            const newCategory: Category = {
-                id: newId,
-                name: newCategoryInput
-            };
-            const updatedCategories = [...categories, newCategory];
-            setCategories(updatedCategories);
-            localStorage.setItem('categories', JSON.stringify(updatedCategories));
-            setNewCategoryInput("");
-            setIsAddingNewCategory(false);
+            const isDuplicate = categories.some(category => category.name === newCategoryInput);
+            if (isDuplicate) {
+                toast.error('Category name already exists');
+                return;
+            }
+            try {
+                const newId: string = generateUniqueId();
+                const newCategory: Category = {
+                    id: newId,
+                    name: newCategoryInput
+                };
+                const updatedCategories = [...categories, newCategory];
+                setCategories(updatedCategories);
+                localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                setNewCategoryInput("");
+                setIsAddingNewCategory(false);
+                toast.success('Category added successfully');
+            } catch (error) {
+                toast.error('Failed to add category');
+            }
         }
     };
-    
+
     const handleDeleteTag = (tagId: string) => {
-        const updatedTags = tags.filter(tag => tag.id !== tagId);
-        const updatedBooks = books.map(book => ({
-            ...book,
-            tags: book.tags.filter(id => id.toString() !== tagId)
-        }));
-        setTags(updatedTags);
-        setBooks(updatedBooks);
-        localStorage.setItem('tags', JSON.stringify(updatedTags));
-        localStorage.setItem('books', JSON.stringify(updatedBooks));
+        const isInUse = books.some(book => book.tags.includes(parseInt(tagId)));
+        if (isInUse) {
+            toast.error('Cannot delete tag as it is in use');
+            return;
+        }
+        try {
+            const updatedTags = tags.filter(tag => tag.id !== tagId);
+            const updatedBooks = books.map(book => ({
+                ...book,
+                tags: book.tags.filter(id => id.toString() !== tagId)
+            }));
+            setTags(updatedTags);
+            setBooks(updatedBooks);
+            localStorage.setItem('tags', JSON.stringify(updatedTags));
+            localStorage.setItem('books', JSON.stringify(updatedBooks));
+            toast.success('Tag deleted successfully');
+        } catch (error) {
+            toast.error('Failed to delete tag');
+        }
     };
 
 
@@ -207,30 +264,51 @@ const BookList: React.FC = () => {
         setNewTagName(tag.name);
     };
 
+
     const handleSaveTag = () => {
         if (tagToEdit) {
-            const updatedTags = tags.map(tag =>
-                tag.id === tagToEdit.id ? { ...tag, name: newTagName } : tag
-            );
-            setTags(updatedTags);
-            localStorage.setItem('tags', JSON.stringify(updatedTags));
-            setTagToEdit(null);
-            setNewTagName("");
+            const isDuplicate = tags.some(tag => tag.name === newTagName && tag.id !== tagToEdit.id);
+            if (isDuplicate) {
+                toast.error('Tag name already exists');
+                return;
+            }
+            try {
+                const updatedTags = tags.map(tag =>
+                    tag.id === tagToEdit.id ? { ...tag, name: newTagName } : tag
+                );
+                setTags(updatedTags);
+                localStorage.setItem('tags', JSON.stringify(updatedTags));
+                setTagToEdit(null);
+                setNewTagName("");
+                toast.success('Tag edited successfully');
+            } catch (error) {
+                toast.error('Failed to edit tag');
+            }
         }
     };
 
     const handleAddNewTag = () => {
         if (newTagInput.trim() !== "") {
-            const newId: string = generateUniqueId();
-            const newTag: Tag = {
-                id: newId,
-                name: newTagInput
-            };
-            const updatedTags = [...tags, newTag];
-            setTags(updatedTags);
-            localStorage.setItem('tags', JSON.stringify(updatedTags));
-            setNewTagInput("");
-            setIsAddingNewTag(false);
+            const isDuplicate = tags.some(tag => tag.name === newTagInput);
+            if (isDuplicate) {
+                toast.error('Tag name already exists');
+                return;
+            }
+            try {
+                const newId: string = generateUniqueId();
+                const newTag: Tag = {
+                    id: newId,
+                    name: newTagInput
+                };
+                const updatedTags = [...tags, newTag];
+                setTags(updatedTags);
+                localStorage.setItem('tags', JSON.stringify(updatedTags));
+                setNewTagInput("");
+                setIsAddingNewTag(false);
+                toast.success('Tag added successfully');
+            } catch (error) {
+                toast.error('Failed to add tag');
+            }
         }
     };
 
@@ -257,6 +335,7 @@ const BookList: React.FC = () => {
 
     return (
         <Container>
+            <ToastContainer />
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={rows}
