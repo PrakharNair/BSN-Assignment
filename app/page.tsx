@@ -5,12 +5,12 @@ import BookList from '../components/BookList';
 import { CssBaseline } from '@mui/material';
 
 const Home: React.FC = () => {
-  return (
-    <>
-      <CssBaseline />
-      <BookList />
-    </>
-  );
+    return (
+        <>
+            <CssBaseline />
+            <BookList />
+        </>
+    );
 };
 
 export default Home;
