@@ -14,6 +14,7 @@ interface AddBookProps {
 }
 
 const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categories, tags, nextId }) => {
+    //set initial state for new book being added
     const [newBook, setNewBook] = useState({
         title: '',
         author: '',
@@ -22,10 +23,12 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
         categories: [] as number[],
         tags: [] as number[],
     });
+    //set of rules that must adhere to to allow book to be added 
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
         const { title, author, genre, rating } = newBook;
+        // rules are: title/author/genre can't be empty, rating has to be 0-5. If over 5, ratings will auto change to 5. 
         setIsFormValid(title.trim() !== '' && author.trim() !== '' && genre.trim() !== '' && rating >= 0 && rating <= 5);
     }, [newBook]);
 
@@ -34,6 +37,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
 
         let updatedValue: string | number = value;
 
+        // logic to handle auto changing ratings to 5 if they go above 5, or 0 if they go below 0
         if (name === 'rating') {
             const ratingValue = parseFloat(value);
             if (ratingValue < 0) {
@@ -50,6 +54,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
         });
     };
 
+    // setup for tags/categories
     const handleMultiSelectChange = (name: string, values: number[]) => {
         setNewBook({
             ...newBook,
@@ -57,6 +62,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
         });
     };
 
+    // submit 
     const handleSubmit = () => {
         if (isFormValid) {
             onAddBook({ ...newBook, id: nextId });
@@ -71,6 +77,13 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
             onClose();
         }
     };
+
+    /*
+        STRUCTURE:
+        - This is all pretty basic, the only thing to explain is: is the render value concept. It's the reason as to why we set up MultiSelect the way we did basically. 
+        - We map through the entire categories/tags that we have, and just keep selecting what we need to, and utilizing this method, allows us to use Checkboxes, which is more intuitive.
+    
+    */
 
     return (
         <Dialog open={isOpen} onClose={onClose}>
