@@ -32,31 +32,58 @@ const BookList: React.FC = () => {
     const [isAddingNewTag, setIsAddingNewTag] = useState<boolean>(false);
     const [newTagInput, setNewTagInput] = useState<string>("");
 
-    // Initial data 
+    // Initial data load
+
+    /*Added API loaded on initial. NOTE: IT'S SLOW, the api i think is not supported super well so you have to wait a bit, but it will show up! Can optimize further. We still use data json for categories/tags though. */
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch from localstorage
+                //Grab whatever is in local storage currently, opens the gate for data persistance
                 const storedCategories = localStorage.getItem('categories');
                 const storedTags = localStorage.getItem('tags');
                 const storedBooks = localStorage.getItem('books');
 
-                //if we got any data
-                if (storedCategories && storedTags && storedBooks) {
+                // If both the categories and tags are in storage, we can just grab those already
+                if (storedCategories && storedTags) {
                     setCategories(JSON.parse(storedCategories));
                     setTags(JSON.parse(storedTags));
-                    setBooks(JSON.parse(storedBooks));
                 } else {
-                    // else fetch data from the json, and put it in the storage
+                    // If not though, we know that we need to grab them from the json, which is what we do here
                     const response = await fetch('/books.json');
                     const data = await response.json();
                     setCategories(data.categories);
                     setTags(data.tags);
-                    setBooks(data.books);
 
                     localStorage.setItem('categories', JSON.stringify(data.categories));
                     localStorage.setItem('tags', JSON.stringify(data.tags));
-                    localStorage.setItem('books', JSON.stringify(data.books));
+                }
+
+                // Next check is independent, because there's a case where we can have no books, but still have categories load in (think of it as a failsafe if the API fails, but the app is still obviously usable)
+                if (storedBooks) {
+                    setBooks(JSON.parse(storedBooks));
+                } else {
+                    const fetchBook = async () => {
+                        const response = await fetch('https://fakerapi.it/api/v1/books?_quantity=1');
+                        const data = await response.json();
+                        return data.data[0];
+                    };
+
+                    // We're loading in 3, but tha can obviously be changed to whatever we want
+                    const booksFromApi = await Promise.all([fetchBook(), fetchBook(), fetchBook()]);
+
+                    // The API only gives us id/title/author/genre, so we auto populate rating, and leave category/tags empty as theyre're optional. 
+                    const initialBooks = booksFromApi.map((book, index) => ({
+                        id: index + 1,
+                        title: book.title,
+                        author: book.author,
+                        genre: book.genre,
+                        rating: 0,
+                        categories: [] as number[],
+                        tags: [] as number[],
+                    }));
+
+                    setBooks(initialBooks);
+                    localStorage.setItem('books', JSON.stringify(initialBooks));
                 }
             } catch (error) {
                 toast.error('Failed to fetch data');
@@ -127,11 +154,11 @@ const BookList: React.FC = () => {
         setNewTagInput("");
     };
 
-     /* 
-    STRUCTURE: 
-        - It's pretty standard and basic but we are making sure the buttons are clicked before initiate any delete/edit. This allows for slower browsers to not break the site.
-        - Overall pretty simple, and utilizes the helper component. 
-    */ 
+    /* 
+   STRUCTURE: 
+       - It's pretty standard and basic but we are making sure the buttons are clicked before initiate any delete/edit. This allows for slower browsers to not break the site.
+       - Overall pretty simple, and utilizes the helper component. 
+   */
     //delete book
     const handleDeleteBook = () => {
         if (bookToDelete) {
