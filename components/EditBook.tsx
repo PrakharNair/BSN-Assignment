@@ -1,37 +1,32 @@
-"use client";
-
-import React, { useEffect, useState } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, MenuItem, Select, FormControl, InputLabel, Checkbox, ListItemText, OutlinedInput } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, MenuItem, Select, FormControl, InputLabel, Checkbox, ListItemText, OutlinedInput, Button } from '@mui/material';
 import { Book, Category, Tag } from '../interfaces/Book';
 
-interface AddBookProps {
+
+interface EditBookProps {
     isOpen: boolean;
     onClose: () => void;
-    onAddBook: (book: Book) => void;
+    onEditBook: (book: Book) => void;
     categories: Category[];
     tags: Tag[];
-    nextId: number;
+    initialBook: Book;
 }
 
-const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categories, tags, nextId }) => {
-    const [newBook, setNewBook] = useState({
-        title: '',
-        author: '',
-        genre: '',
-        rating: 0,
-        categories: [] as number[],
-        tags: [] as number[],
-    });
+const EditBook: React.FC<EditBookProps> = ({ isOpen, onClose, onEditBook, categories, tags, initialBook }) => {
+    const [book, setBook] = useState<Book>(initialBook);
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
-        const { title, author, genre, rating } = newBook;
+        setBook(initialBook);
+    }, [initialBook]);
+
+    useEffect(() => {
+        const { title, author, genre, rating } = book;
         setIsFormValid(title.trim() !== '' && author.trim() !== '' && genre.trim() !== '' && rating >= 0 && rating <= 5);
-    }, [newBook]);
+    }, [book]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-
         let updatedValue: string | number = value;
 
         if (name === 'rating') {
@@ -44,43 +39,36 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                 updatedValue = ratingValue;
             }
         }
-        setNewBook({
-            ...newBook,
+
+        setBook({
+            ...book,
             [name]: updatedValue,
         });
     };
 
     const handleMultiSelectChange = (name: string, values: number[]) => {
-        setNewBook({
-            ...newBook,
+        setBook({
+            ...book,
             [name]: values,
         });
     };
 
     const handleSubmit = () => {
         if (isFormValid) {
-            onAddBook({ ...newBook, id: nextId });
-            setNewBook({
-                title: '',
-                author: '',
-                genre: '',
-                rating: 0,
-                categories: [] as number[],
-                tags: [] as number[],
-            });
+            onEditBook(book);
             onClose();
         }
     };
 
     return (
         <Dialog open={isOpen} onClose={onClose}>
-            <DialogTitle>Add New Book</DialogTitle>
+            <DialogTitle>Edit Book</DialogTitle>
             <DialogContent>
                 <TextField
                     margin="dense"
                     label="Title"
                     name="title"
-                    value={newBook.title}
+                    value={book.title}
                     onChange={handleInputChange}
                     fullWidth
                     required
@@ -89,7 +77,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     margin="dense"
                     label="Author"
                     name="author"
-                    value={newBook.author}
+                    value={book.author}
                     onChange={handleInputChange}
                     fullWidth
                     required
@@ -98,7 +86,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     margin="dense"
                     label="Genre"
                     name="genre"
-                    value={newBook.genre}
+                    value={book.genre}
                     onChange={handleInputChange}
                     fullWidth
                     required
@@ -108,7 +96,7 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     label="Personal Rating"
                     name="rating"
                     type="number"
-                    value={newBook.rating}
+                    value={book.rating}
                     onChange={handleInputChange}
                     fullWidth
                     inputProps={{ min: 0, max: 5 }}
@@ -118,14 +106,14 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     <InputLabel>Categories</InputLabel>
                     <Select
                         multiple
-                        value={newBook.categories}
+                        value={book.categories}
                         onChange={(e) => handleMultiSelectChange('categories', e.target.value as number[])}
                         input={<OutlinedInput label="Categories" />}
                         renderValue={(selected) => (selected as number[]).map(id => categories.find(category => category.id === id.toString())?.name).join(', ')}
                     >
                         {categories.map(category => (
                             <MenuItem key={category.id} value={parseInt(category.id)}>
-                                <Checkbox checked={newBook.categories.indexOf(parseInt(category.id)) > -1} />
+                                <Checkbox checked={book.categories.includes(parseInt(category.id))} />
                                 <ListItemText primary={category.name} />
                             </MenuItem>
                         ))}
@@ -135,14 +123,14 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     <InputLabel>Tags</InputLabel>
                     <Select
                         multiple
-                        value={newBook.tags}
+                        value={book.tags}
                         onChange={(e) => handleMultiSelectChange('tags', e.target.value as number[])}
                         input={<OutlinedInput label="Tags" />}
                         renderValue={(selected) => (selected as number[]).map(id => tags.find(tag => tag.id === id.toString())?.name).join(', ')}
                     >
                         {tags.map(tag => (
                             <MenuItem key={tag.id} value={parseInt(tag.id)}>
-                                <Checkbox checked={newBook.tags.indexOf(parseInt(tag.id)) > -1} />
+                                <Checkbox checked={book.tags.includes(parseInt(tag.id))} />
                                 <ListItemText primary={tag.name} />
                             </MenuItem>
                         ))}
@@ -154,11 +142,11 @@ const AddBook: React.FC<AddBookProps> = ({ isOpen, onClose, onAddBook, categorie
                     Cancel
                 </Button>
                 <Button onClick={handleSubmit} color="primary" disabled={!isFormValid}>
-                    Add Book
+                    Save Changes
                 </Button>
             </DialogActions>
         </Dialog>
     );
 };
 
-export default AddBook;
+export default EditBook;
