@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, MenuItem, Select, FormControl, InputLabel, Checkbox, ListItemText, OutlinedInput, Button } from '@mui/material';
 import { Book, Category, Tag } from '../interfaces/Book';
 
-
 interface EditBookProps {
     isOpen: boolean;
     onClose: () => void;
@@ -12,16 +11,25 @@ interface EditBookProps {
     initialBook: Book;
 }
 
+/*
+    STRUCTURE:
+        - This code is almost identical to AddBook, with minor differences. I figured it would be cleaner to separate them, even if they are close. 
+        While not 100% optimal, it looks much more professional, and the run time difference is basically negligible, since both don't mount at the same time, or immediately on load of the main page.
+*/
+
+
 const EditBook: React.FC<EditBookProps> = ({ isOpen, onClose, onEditBook, categories, tags, initialBook }) => {
     const [book, setBook] = useState<Book>(initialBook);
     const [isFormValid, setIsFormValid] = useState(false);
-
+    
+    //set initial state, using whichever prop was passed in BookList. this is necessary to be edited further
     useEffect(() => {
         setBook(initialBook);
     }, [initialBook]);
 
     useEffect(() => {
         const { title, author, genre, rating } = book;
+        // rules are: title/author/genre can't be empty, rating has to be 0-5. If over 5, ratings will auto change to 5. 
         setIsFormValid(title.trim() !== '' && author.trim() !== '' && genre.trim() !== '' && rating >= 0 && rating <= 5);
     }, [book]);
 
@@ -29,6 +37,7 @@ const EditBook: React.FC<EditBookProps> = ({ isOpen, onClose, onEditBook, catego
         const { name, value } = e.target;
         let updatedValue: string | number = value;
 
+        // logic to handle auto changing ratings to 5 if they go above 5, or 0 if they go below 0
         if (name === 'rating') {
             const ratingValue = parseFloat(value);
             if (ratingValue < 0) {
@@ -46,6 +55,8 @@ const EditBook: React.FC<EditBookProps> = ({ isOpen, onClose, onEditBook, catego
         });
     };
 
+    // setup for tags/categories
+
     const handleMultiSelectChange = (name: string, values: number[]) => {
         setBook({
             ...book,
@@ -59,6 +70,14 @@ const EditBook: React.FC<EditBookProps> = ({ isOpen, onClose, onEditBook, catego
             onClose();
         }
     };
+
+    
+    /*
+        STRUCTURE:
+        - This is all pretty basic, the only thing to explain is: is the render value concept..
+        - We map through the entire categories/tags that we have, and just keep selecting what we need to, and utilizing this method, allows us to use Checkboxes, which is more intuitive.
+        - The render value itself will show the full list and actively update what is selected already. 
+    */
 
     return (
         <Dialog open={isOpen} onClose={onClose}>

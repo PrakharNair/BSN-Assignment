@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Container, Button, Dialog, DialogActions, DialogContent, DialogTitle, Chip, IconButton, TextField } from '@mui/material';
+import { Container, Button, Dialog, DialogActions, DialogContent, DialogTitle, Chip, IconButton, TextField, AppBar, Toolbar, Typography } from '@mui/material';
 import AddBook from './AddBook';
 import EditBook from './EditBook';
 import EditIcon from '@mui/icons-material/Edit';
@@ -32,18 +32,22 @@ const BookList: React.FC = () => {
     const [isAddingNewTag, setIsAddingNewTag] = useState<boolean>(false);
     const [newTagInput, setNewTagInput] = useState<string>("");
 
+    // Initial data 
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // Fetch from localstorage
                 const storedCategories = localStorage.getItem('categories');
                 const storedTags = localStorage.getItem('tags');
                 const storedBooks = localStorage.getItem('books');
 
+                //if we got any data
                 if (storedCategories && storedTags && storedBooks) {
                     setCategories(JSON.parse(storedCategories));
                     setTags(JSON.parse(storedTags));
                     setBooks(JSON.parse(storedBooks));
                 } else {
+                    // else fetch data from the json, and put it in the storage
                     const response = await fetch('/books.json');
                     const data = await response.json();
                     setCategories(data.categories);
@@ -61,6 +65,7 @@ const BookList: React.FC = () => {
         fetchData();
     }, []);
 
+    // category and name helper functions
     const getCategoryNames = (ids: number[]) => {
         return ids.map(id => categories.find(category => category.id === id.toString())?.name).join(', ');
     };
@@ -69,12 +74,15 @@ const BookList: React.FC = () => {
         return ids.map(id => tags.find(tag => tag.id === id.toString())?.name).join(', ');
     };
 
+    // creating the rows for datagrid
     const rows = books.map(book => ({
         ...book,
         categories: getCategoryNames(book.categories),
         tags: getTagNames(book.tags)
     }));
 
+
+    // below functions handle opening and closing modals
     const handleOpenAddModal = () => {
         setIsAddModalOpen(true);
     };
@@ -119,6 +127,12 @@ const BookList: React.FC = () => {
         setNewTagInput("");
     };
 
+     /* 
+    STRUCTURE: 
+        - It's pretty standard and basic but we are making sure the buttons are clicked before initiate any delete/edit. This allows for slower browsers to not break the site.
+        - Overall pretty simple, and utilizes the helper component. 
+    */ 
+    //delete book
     const handleDeleteBook = () => {
         if (bookToDelete) {
             const updatedBooks = books.filter(book => book.id !== bookToDelete.id);
@@ -129,6 +143,7 @@ const BookList: React.FC = () => {
         }
     };
 
+    // add book
     const handleAddBook = (newBook: Book) => {
         try {
             const updatedBooks = [...books, newBook];
@@ -140,6 +155,7 @@ const BookList: React.FC = () => {
         }
     };
 
+    // edit book
     const handleEditBook = (updatedBook: Book) => {
         try {
             const updatedBooks = books.map(book => (book.id === updatedBook.id ? updatedBook : book));
@@ -152,6 +168,8 @@ const BookList: React.FC = () => {
         }
     };
 
+    // So I went with this approach because when I was testing, I only randomly generated ids to 1000, but I somehow got a dupliate on my first one!
+    // Going with do while obviously requires it to run once, then it does the check, and will never really get stuck. 
     const generateUniqueId = (): string => {
         let newId: string;
         do {
@@ -160,6 +178,16 @@ const BookList: React.FC = () => {
         return newId;
     };
 
+
+    /* 
+    STRUCTURE: 
+        - Structure for tag and category are basically identical below so I will explain the design ideas here:
+            - .some turned out to be the best way to iterate here, I use it below pretty much every time below, and can discuss further in the follow-up call, but it returns the boolean if the arrow function is filled, it basically fits the use case perfectly
+            - We will always set the updated category/tag into the state, then update the local storage for both category state/tag AND the book. 
+            - Books is no longer necessary, I did this before because on the initial run through, I thought that if we deleted a tag/category in use, we remove it from the table entirely. This was phased out, but this is changing nothing, and provides more options to integrate further functionality.
+            - Can be phased out no issues.
+    */
+    // delete category category
     const handleDeleteCategory = (categoryId: string) => {
         const isInUse = books.some(book => book.categories.includes(parseInt(categoryId)));
         if (isInUse) {
@@ -182,12 +210,15 @@ const BookList: React.FC = () => {
         }
     };
 
+
+    //edit category
     const handleEditCategory = (category: Category) => {
         setCategoryToEdit(category);
         setNewCategoryName(category.name);
     };
 
 
+    // save category
     const handleSaveCategory = () => {
         if (categoryToEdit) {
             const isDuplicate = categories.some(category => category.name === newCategoryName && category.id !== categoryToEdit.id);
@@ -211,6 +242,7 @@ const BookList: React.FC = () => {
     };
 
 
+    //add category
     const handleAddNewCategory = () => {
         if (newCategoryInput.trim() !== "") {
             const isDuplicate = categories.some(category => category.name === newCategoryInput);
@@ -236,6 +268,7 @@ const BookList: React.FC = () => {
         }
     };
 
+    //delete tag
     const handleDeleteTag = (tagId: string) => {
         const isInUse = books.some(book => book.tags.includes(parseInt(tagId)));
         if (isInUse) {
@@ -259,14 +292,17 @@ const BookList: React.FC = () => {
     };
 
 
+    //edit tag
     const handleEditTag = (tag: Tag) => {
         setTagToEdit(tag);
         setNewTagName(tag.name);
     };
 
 
+    //save tag
     const handleSaveTag = () => {
         if (tagToEdit) {
+            // need to check if there's a duplicate
             const isDuplicate = tags.some(tag => tag.name === newTagName && tag.id !== tagToEdit.id);
             if (isDuplicate) {
                 toast.error('Tag name already exists');
@@ -287,8 +323,10 @@ const BookList: React.FC = () => {
         }
     };
 
+    //add tag
     const handleAddNewTag = () => {
         if (newTagInput.trim() !== "") {
+            // need to check if there's a duplicate
             const isDuplicate = tags.some(tag => tag.name === newTagInput);
             if (isDuplicate) {
                 toast.error('Tag name already exists');
@@ -312,6 +350,7 @@ const BookList: React.FC = () => {
         }
     };
 
+    // Defining columns for datagrid. Note I used renderCell, so I can render in the action component, which is just best practice, and keeps the code much cleaner.
     const columns: GridColDef[] = [
         { field: 'title', headerName: 'Title', width: 150 },
         { field: 'author', headerName: 'Author', width: 150 },
@@ -333,9 +372,24 @@ const BookList: React.FC = () => {
         },
     ];
 
+    /* 
+        STRUCTURE:
+        - For rendering I heavily leaned on DataGrid to help with table design and filtering. It's all just built in, after all.
+        - I used modals instead of popups to feel less invasive, and in adherance to good design philosophy, I limited to one modal open at a time. 
+        - Category/Tags settings are their own standalone buttons with brighter buttons, to social engineer users to click on them to see what they do, and further understand complexity of app.
+        - Design structure very minimal, but just making sure it looks nice at the very least. 
+    */
+
     return (
         <Container>
             <ToastContainer />
+            <AppBar position="static" style={{ marginBottom: '20px' }}>
+                <Toolbar>
+                    <Typography variant="h6" style={{ flexGrow: 1 }}>
+                        BSN - Prakhar Nair
+                    </Typography>
+                </Toolbar>
+            </AppBar>
             <div style={{ height: 400, width: '100%' }}>
                 <DataGrid
                     rows={rows}
@@ -348,15 +402,19 @@ const BookList: React.FC = () => {
                     }}
                 />
             </div>
-            <Button variant="contained" color="primary" onClick={handleOpenAddModal} style={{ marginTop: 20, marginRight: 10 }}>
-                Add Book
-            </Button>
-            <Button variant="contained" color="secondary" onClick={handleOpenCategoriesModal} style={{ marginTop: 20, marginRight: 10 }}>
-                Categories
-            </Button>
-            <Button variant="contained" color="secondary" onClick={handleOpenTagsModal} style={{ marginTop: 20 }}>
-                Tags
-            </Button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
+                <Button variant="contained" color="primary" onClick={handleOpenAddModal} style={{ marginRight: 10 }}>
+                    Add Book
+                </Button>
+                <div>
+                    <Button variant="contained" color="secondary" onClick={handleOpenCategoriesModal} style={{ marginRight: 10 }}>
+                        Categories
+                    </Button>
+                    <Button variant="contained" color="secondary" onClick={handleOpenTagsModal}>
+                        Tags
+                    </Button>
+                </div>
+            </div>
             <AddBook
                 isOpen={isAddModalOpen}
                 onClose={handleCloseModal}

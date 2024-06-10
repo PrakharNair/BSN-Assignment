@@ -9,6 +9,11 @@ interface ActionsProps {
     onDelete: (bookId: number) => void;
 }
 
+/* 
+    STRUCTURE:
+    - Decided to create standalone component for this. Made more sense with initial ideas for this, and just overall looks nicer. Much easier to render this in with renderCell. 
+*/
+
 const Actions: React.FC<ActionsProps> = ({ bookId, onEdit, onDelete }) => {
     return (
         <div>
